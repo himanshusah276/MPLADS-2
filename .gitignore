@@ -1,0 +1,61 @@
+# ==========================================
+# MPLADS Sentinel - Comprehensive .gitignore
+# ==========================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyd
+
+# Python Environments & Distribution
+.env
+.env.*
+!.env.example
+venv/
+.venv/
+env/
+ENV/
+build/
+dist/
+*.egg-info/
+
+# Pytest / Coverage / Linters
+.pytest_cache/
+.coverage
+.cache
+.ruff_cache/
+.mypy_cache/
+
+# Databases & local storage
+*.db
+*.sqlite
+*.sqlite3
+backend/mplads.db
+backend/app/mplads.db
+
+# Node / Frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+dist/
+.vite/
+frontend/.vite/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Logs & scratch
+logs/
+*.log
+*.tmp
+scratch/
+
+# Operating System & Editor Artifacts
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo

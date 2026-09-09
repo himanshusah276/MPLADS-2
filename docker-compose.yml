@@ -1,0 +1,28 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mplads-sentinel-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - ENV=dev
+      - DATABASE_URL=sqlite:///./mplads.db
+      - SECRET_KEY=mplads_sentinel_super_secret_jwt_key_sih2026_mo_spi_diid_26102
+    volumes:
+      - ./backend:/app
+      - backend-data:/app/data
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: mplads-sentinel-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  backend-data:
