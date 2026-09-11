@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from backend.database import get_db
 from backend.models import AnomalyAlert, Work, MP
@@ -94,7 +94,7 @@ def triage_alert(
     alert.status = payload.status
     alert.reviewer_comment = payload.comment
     alert.reviewer_role = payload.reviewer_role or "Auditor"
-    alert.reviewed_at = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    alert.reviewed_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
     db.commit()
     db.refresh(alert)

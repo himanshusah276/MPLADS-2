@@ -6,7 +6,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 export const ReportsExportView: React.FC = () => {
-  const { selectedState, financialYear, t } = useApp();
+  const { selectedState, financialYear } = useApp();
   const [generatingPdf, setGeneratingPdf] = useState<boolean>(false);
   const [kpis, setKpis] = useState<any>(null);
 
@@ -17,10 +17,9 @@ export const ReportsExportView: React.FC = () => {
   const generateCAGAuditPDF = async () => {
     setGeneratingPdf(true);
     try {
-      const [alerts, works, mps] = await Promise.all([
+      const [alerts, works] = await Promise.all([
         api.getAlerts('All', 'All', selectedState),
-        api.getWorks({ state: selectedState }),
-        api.getMPs({ state: selectedState })
+        api.getWorks({ state: selectedState })
       ]);
 
       const doc = new jsPDF();

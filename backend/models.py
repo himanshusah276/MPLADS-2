@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, Integer, Float, Boolean, ForeignKey, Text, DateTime
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 from backend.database import Base
 
 class MP(Base):
@@ -125,7 +125,7 @@ class AnomalyAlert(Base):
     description = Column(Text, nullable=False)
     rule_code = Column(String(50), nullable=True)  # R1, R2, R3, R4, R5, R6, ML-ISO, ML-DUP, ML-HHI
     explainable_details = Column(Text, nullable=True)  # JSON or markdown text
-    detected_on = Column(String(30), default=lambda: datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"))
+    detected_on = Column(String(30), default=lambda: datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"))
     status = Column(String(50), default="Open", index=True)  # Open, Under Review, Resolved, False Positive
     reviewer_role = Column(String(50), nullable=True)
     reviewer_comment = Column(Text, nullable=True)

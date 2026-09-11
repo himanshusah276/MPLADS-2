@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
 import { MP, Work } from '../types';
@@ -9,17 +9,20 @@ import {
 } from 'lucide-react';
 
 export const MPDossierView: React.FC = () => {
-  const { selectedState, selectedMPId, setSelectedMPId, setSelectedWorkId, t } = useApp();
+  const { selectedState, selectedMPId, setSelectedMPId, setSelectedWorkId } = useApp();
   const [mps, setMps] = useState<MP[]>([]);
   const [dossierData, setDossierData] = useState<any>(null);
   const [search, setSearch] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
+  const [dossierLoading, setDossierLoading] = useState<boolean>(false);
+  const searchTimeoutRef = useRef<any>(null);
 
-  useEffect(() => {
+  const fetchMPs = useCallback((overrideSearch?: string) => {
     setLoading(true);
-    api.getMPs({ state: selectedState, search }).then((data) => {
-      setMps(data);
-      if (!selectedMPId && data.length > 0) {
+    const searchVal = overrideSearch !== undefined ? overrideSearch : search;
+    api.getMPs({ state: selectedState, search: searchVal }).then((data) => {
+      setMps(data || []);
+      if (!selectedMPId && data && data.length > 0) {
         setSelectedMPId(data[0].mp_id);
       }
       setLoading(false);
@@ -27,40 +30,61 @@ export const MPDossierView: React.FC = () => {
       console.error(err);
       setLoading(false);
     });
-  }, [selectedState, search]);
+  }, [selectedState, search, selectedMPId, setSelectedMPId]);
+
+  useEffect(() => {
+    fetchMPs();
+  }, [fetchMPs]);
+
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    searchTimeoutRef.current = setTimeout(() => {
+      fetchMPs(val);
+    }, 300);
+  };
 
   useEffect(() => {
     if (!selectedMPId) return;
+    setDossierLoading(true);
     api.getMPDossier(selectedMPId).then((res) => {
       setDossierData(res);
-    }).catch(console.error);
+      setDossierLoading(false);
+    }).catch(err => {
+      console.error(err);
+      setDossierLoading(false);
+    });
   }, [selectedMPId]);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-fade-in">
       {/* Left MP List */}
       <div className="lg:col-span-4 space-y-3">
-        <div className="bg-gov-card border border-gov-border rounded-xl p-3 shadow-gov">
+        <div className="bg-gov-card border border-gov-border rounded-2xl p-3 shadow-gov">
           <div className="relative">
             <Search className="w-4 h-4 text-gov-muted absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search MP by name or constituency..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-gov-card text-xs text-gov-primary pl-9 pr-3 py-2 rounded-lg border border-gov-border focus:outline-none focus:border-orange-500 placeholder:text-gov-muted font-medium shadow-xs"
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="w-full bg-gov-card text-xs text-gov-primary pl-9 pr-3 py-2.5 rounded-xl border border-gov-border focus:outline-none focus:border-orange-500 placeholder:text-gov-muted font-medium shadow-xs"
             />
           </div>
         </div>
 
         <div className="space-y-2 max-h-[calc(100vh-230px)] overflow-y-auto pr-1">
-          {mps.map((mp) => {
+          {loading ? (
+            [1, 2, 3, 4].map((i) => (
+              <div key={i} className="bg-gov-card p-4 border border-gov-border rounded-2xl skeleton-shimmer h-24"></div>
+            ))
+          ) : mps.map((mp) => {
             const isSelected = selectedMPId === mp.mp_id;
             return (
               <div
                 key={mp.mp_id}
                 onClick={() => setSelectedMPId(mp.mp_id)}
-                className={`p-3 rounded-xl border transition cursor-pointer ${
+                className={`p-3.5 rounded-2xl border transition-all cursor-pointer card-hover-lift ${
                   isSelected
                     ? 'bg-orange-500/10 border-orange-500/50 shadow-xs'
                     : 'bg-gov-card border-gov-border hover:bg-slate-50 dark:hover:bg-slate-800/60'
@@ -97,13 +121,14 @@ export const MPDossierView: React.FC = () => {
 
       {/* Right MP Dossier View */}
       <div className="lg:col-span-8 space-y-4">
-        {dossierData ? (
+        {dossierLoading ? (
+          <div className="bg-gov-card border border-gov-border rounded-2xl p-12 text-center text-gov-muted space-y-3 font-medium skeleton-shimmer h-80"></div>
+        ) : dossierData ? (
           <>
             {/* MP Header Card */}
-            <div className="bg-gov-card border border-gov-border rounded-xl p-5 shadow-gov space-y-4">
+            <div className="bg-gov-card border border-gov-border rounded-2xl p-5 shadow-gov space-y-4">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="flex items-center space-x-3.5">
-                  {/* Rounded Avatar */}
                   <div className="w-12 h-12 rounded-full bg-[#0a2540] border-2 border-orange-500/60 flex items-center justify-center text-sm font-bold font-mono text-amber-300 shadow-sm">
                     {dossierData.mp.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
                   </div>
@@ -132,7 +157,7 @@ export const MPDossierView: React.FC = () => {
 
               {/* Entitlement & 80% UC Milestone */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-3 border-t border-gov-border">
-                <div className="bg-gov-card-muted p-3.5 rounded-lg border border-gov-border">
+                <div className="bg-gov-card-muted p-3.5 rounded-xl border border-gov-border">
                   <div className="text-[11px] text-gov-muted font-semibold">Annual Entitlement</div>
                   <div className="text-lg font-bold text-gov-primary mt-0.5 font-mono">
                     ₹ 5.00 <span className="text-xs font-normal text-gov-muted">Crore</span>
@@ -140,7 +165,7 @@ export const MPDossierView: React.FC = () => {
                   <div className="text-[10px] text-gov-muted mt-0.5 font-medium">₹2.5 Cr × 2 Installments</div>
                 </div>
 
-                <div className="bg-gov-card-muted p-3.5 rounded-lg border border-gov-border">
+                <div className="bg-gov-card-muted p-3.5 rounded-xl border border-gov-border">
                   <div className="text-[11px] text-gov-muted font-semibold">Total Sanctioned & Utilized</div>
                   <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 font-mono">
                     ₹ {(dossierData.mp.total_utilized / 10000000).toFixed(2)} <span className="text-xs font-normal text-gov-muted">Cr</span>
@@ -150,7 +175,7 @@ export const MPDossierView: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="bg-gov-card-muted p-3.5 rounded-lg border border-gov-border">
+                <div className="bg-gov-card-muted p-3.5 rounded-xl border border-gov-border">
                   <div className="text-[11px] text-gov-muted font-semibold">80% UC Release Eligibility</div>
                   <div className="text-sm font-bold text-gov-primary mt-1 flex items-center gap-1.5">
                     {dossierData.entitlement_summary?.is_eligible_for_inst2_release ? (
@@ -171,18 +196,18 @@ export const MPDossierView: React.FC = () => {
             </div>
 
             {/* MP Recommended Works List */}
-            <div className="bg-gov-card border border-gov-border rounded-xl p-4 space-y-3 shadow-gov">
+            <div className="bg-gov-card border border-gov-border rounded-2xl p-4 space-y-3 shadow-gov">
               <h3 className="text-xs font-bold text-gov-primary uppercase tracking-wider flex items-center justify-between">
                 <span>Sanctioned Works ({dossierData.works?.length || 0})</span>
                 <span className="text-gov-muted font-medium">eSAKSHI Verified Database</span>
               </h3>
 
-              <div className="space-y-2 max-h-96 overflow-y-auto">
+              <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
                 {dossierData.works?.map((w: Work) => (
                   <div
                     key={w.work_id}
                     onClick={() => setSelectedWorkId(w.work_id)}
-                    className="p-3 bg-gov-card-muted hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg border border-gov-border flex items-center justify-between gap-3 transition cursor-pointer"
+                    className="p-3 bg-gov-card-muted hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl border border-gov-border flex items-center justify-between gap-3 transition cursor-pointer card-hover-lift"
                   >
                     <div className="space-y-1">
                       <div className="flex items-center space-x-2">
@@ -213,7 +238,7 @@ export const MPDossierView: React.FC = () => {
             </div>
           </>
         ) : (
-          <div className="bg-gov-card p-12 text-center text-gov-muted border border-gov-border rounded-xl font-medium">
+          <div className="bg-gov-card p-12 text-center text-gov-muted border border-gov-border rounded-2xl font-medium">
             Select an MP from the left panel to inspect full entitlement dossier.
           </div>
         )}

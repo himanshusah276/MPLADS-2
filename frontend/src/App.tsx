@@ -13,13 +13,14 @@ import { ReportsExportView } from './components/ReportsExportView';
 import { WorkDetailModal } from './components/WorkDetailModal';
 import { AlertTriageModal } from './components/AlertTriageModal';
 import { RiskExplainerModal } from './components/RiskExplainerModal';
+import { LoginModal } from './components/LoginModal';
 
 const MainContent: React.FC = () => {
   const { activeTab } = useApp();
 
   return (
     <main className="flex-1 p-6 overflow-y-auto max-h-[calc(100vh-65px)] bg-gov-app transition-colors duration-200">
-      <div className="max-w-7xl mx-auto space-y-6 pb-8">
+      <div className="max-w-7xl mx-auto space-y-6 pb-8 tab-fade-enter" key={activeTab}>
         {activeTab === 'dashboard' && <DashboardView />}
         {activeTab === 'digigov' && <DigiGovDashboardView />}
         {activeTab === 'works' && <WorksView />}
@@ -40,10 +41,11 @@ const MainContent: React.FC = () => {
         </p>
       </footer>
 
-      {/* Global Dossier & Triage Modals */}
+      {/* Global Dossier, Triage & Authentication Modals */}
       <WorkDetailModal />
       <AlertTriageModal />
       <RiskExplainerModal />
+      <LoginModal />
     </main>
   );
 };

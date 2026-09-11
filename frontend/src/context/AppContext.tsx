@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { UserRole, UserProfile, Severity } from '../types';
-import { api } from '../services/api';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { UserRole, UserProfile } from '../types';
+import { api, clearApiCache } from '../services/api';
 
 export type AppTheme = 'light' | 'dark';
 
@@ -12,6 +12,14 @@ interface AppContextType {
   setRole: (r: UserRole) => void;
   currentUser: UserProfile;
   setCurrentUser: (u: UserProfile) => void;
+  isAuthenticated: boolean;
+  token: string | null;
+  login: (username: string, password: string) => Promise<boolean>;
+  quickLogin: (username: string) => Promise<boolean>;
+  logout: () => void;
+  showLoginModal: boolean;
+  setShowLoginModal: (s: boolean) => void;
+  demoRoles: UserProfile[];
   financialYear: string;
   setFinancialYear: (fy: string) => void;
   selectedState: string;
@@ -81,7 +89,11 @@ const translations = {
     role_da: "District Authority (Nashik)",
     role_mp: "Hon'ble MP Rajesh Sharma",
     light_mode: "Light Mode",
-    dark_mode: "Dark Mode"
+    dark_mode: "Dark Theme",
+    sign_in: "Sign In",
+    switch_account: "Switch Role",
+    logged_in_as: "Logged in as",
+    secure_session: "GovTech NSSO Session Verified"
   },
   hi: {
     portal_title: "ई-साक्षी — राष्ट्रीय एमपीएलएडीएस निगरानी एवं विसंगति पहचान पोर्टल",
@@ -127,7 +139,11 @@ const translations = {
     role_da: "जिला प्राधिकारी (नासिक)",
     role_mp: "माननीय सांसद राजेश शर्मा",
     light_mode: "लाइट मोड",
-    dark_mode: "डार्क मोड"
+    dark_mode: "डार्क थीम",
+    sign_in: "लॉग इन करें",
+    switch_account: "भूमिका बदलें",
+    logged_in_as: "लॉग इन उपयोगकर्ता",
+    secure_session: "सत्यापित सत्र"
   }
 };
 
@@ -145,11 +161,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [theme, setThemeState] = useState<AppTheme>(() => {
     const saved = localStorage.getItem('mplads_theme');
     if (saved === 'dark' || saved === 'light') return saved;
-    return 'light'; // Default to Light Mode as requested
+    return 'light';
   });
 
-  const [role, setRoleState] = useState<UserRole>('ministry');
-  const [currentUser, setCurrentUser] = useState<UserProfile>(defaultUser);
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem('mplads_token'));
+  const [currentUser, setCurrentUserState] = useState<UserProfile>(() => {
+    const saved = localStorage.getItem('mplads_user');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {}
+    }
+    return defaultUser;
+  });
+
+  const [role, setRoleState] = useState<UserRole>(() => {
+    const saved = localStorage.getItem('mplads_user');
+    if (saved) {
+      try {
+        const u = JSON.parse(saved);
+        if (u.role) return u.role;
+      } catch {}
+    }
+    return 'ministry';
+  });
+
+  const [demoRoles, setDemoRoles] = useState<UserProfile[]>([]);
+  const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
   const [financialYear, setFinancialYear] = useState<string>('Apr 2025 – Mar 2026');
   const [selectedState, setSelectedState] = useState<string>('All states');
   const [selectedSeverity, setSelectedSeverity] = useState<string>('All severities');
@@ -160,8 +198,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [selectedMPId, setSelectedMPId] = useState<string | null>(null);
   const [openTriageAlertId, setOpenTriageAlertId] = useState<string | null>(null);
   const [showExplainer, setShowExplainer] = useState<boolean>(false);
-  const [lastSynced, setLastSynced] = useState<string>('Synced 4 min ago');
+  const [lastSynced, setLastSynced] = useState<string>('Synced just now');
 
+  // Load demo roles on mount
+  useEffect(() => {
+    api.getDemoRoles().then(roles => {
+      if (roles && roles.length > 0) setDemoRoles(roles);
+    }).catch(console.warn);
+  }, []);
+
+  // Sync theme
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     document.documentElement.classList.remove('light', 'dark');
@@ -177,17 +223,104 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setThemeState((prev) => (prev === 'light' ? 'dark' : 'light'));
   };
 
-  const setRole = (r: UserRole) => {
-    setRoleState(r);
-    if (r === 'state_nodal') {
-      setSelectedState('Maharashtra');
-    } else if (r === 'district_authority') {
-      setSelectedState('Maharashtra');
-    } else if (r === 'mp') {
-      setSelectedMPId('MP-LS-0101');
+  const syncUserFilters = useCallback((u: UserProfile) => {
+    if (u.role === 'state_nodal' && u.state) {
+      setSelectedState(u.state);
+    } else if (u.role === 'district_authority' && u.state) {
+      setSelectedState(u.state);
+    } else if (u.role === 'mp' && u.mp_id) {
+      setSelectedMPId(u.mp_id);
+      if (u.state) setSelectedState(u.state);
     } else {
       setSelectedState('All states');
     }
+  }, []);
+
+  const setCurrentUser = (u: UserProfile) => {
+    setCurrentUserState(u);
+    setRoleState(u.role);
+    localStorage.setItem('mplads_user', JSON.stringify(u));
+    syncUserFilters(u);
+  };
+
+  const setRole = (r: UserRole) => {
+    setRoleState(r);
+    // Find matching demo role if available
+    const matched = demoRoles.find(dr => dr.role === r);
+    if (matched) {
+      setCurrentUser(matched);
+    } else {
+      const updated: UserProfile = {
+        ...currentUser,
+        role: r,
+        role_title: {
+          ministry: "Central Nodal Agency (MoSPI)",
+          auditor: "CAG Principal Director of Audit",
+          state_nodal: "State Nodal Authority (MH)",
+          district_authority: "District Authority (Nashik)",
+          mp: "Hon'ble MP Rajesh Sharma"
+        }[r] || r
+      };
+      setCurrentUser(updated);
+    }
+  };
+
+  const login = async (username: string, password: string): Promise<boolean> => {
+    try {
+      const resp = await api.login(username, password);
+      if (resp && resp.access_token) {
+        localStorage.setItem('mplads_token', resp.access_token);
+        setToken(resp.access_token);
+
+        const profile: UserProfile = {
+          username: resp.username,
+          full_name: resp.full_name,
+          email: `${resp.username}@gov.in`,
+          role: resp.role,
+          state: resp.state,
+          district: resp.district,
+          mp_id: resp.mp_id,
+          role_title: {
+            ministry: "Central Nodal Agency (MoSPI)",
+            auditor: "CAG Principal Director of Audit",
+            state_nodal: "State Nodal Authority (Maharashtra)",
+            district_authority: "District Magistrate (Nashik Nodal DA)",
+            mp: "Hon'ble MP Rajesh Sharma (LS)"
+          }[resp.role] || resp.role
+        };
+
+        setCurrentUser(profile);
+        setShowLoginModal(false);
+        return true;
+      }
+      return false;
+    } catch (err: any) {
+      console.error('Login error:', err);
+      throw err;
+    }
+  };
+
+  const quickLogin = async (username: string): Promise<boolean> => {
+    const passwordMap: Record<string, string> = {
+      ministry: "admin123",
+      auditor: "audit123",
+      sna_mh: "state123",
+      da_nashik: "dist123",
+      mp_rsharma: "mp123"
+    };
+    const password = passwordMap[username] || "admin123";
+    return login(username, password);
+  };
+
+  const logout = () => {
+    localStorage.removeItem('mplads_token');
+    localStorage.removeItem('mplads_user');
+    setToken(null);
+    clearApiCache();
+    // Default to ministry demo profile
+    setCurrentUserState(defaultUser);
+    setRoleState('ministry');
+    setSelectedState('All states');
   };
 
   const t = (key: string): string => {
@@ -203,7 +336,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.error('Error running ML analysis:', err);
       setLastSynced('Synced just now');
     } finally {
-      setTimeout(() => setIsAnalyzing(false), 800);
+      setTimeout(() => setIsAnalyzing(false), 900);
     }
   };
 
@@ -217,6 +350,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setRole,
         currentUser,
         setCurrentUser,
+        isAuthenticated: !!token,
+        token,
+        login,
+        quickLogin,
+        logout,
+        showLoginModal,
+        setShowLoginModal,
+        demoRoles,
         financialYear,
         setFinancialYear,
         selectedState,

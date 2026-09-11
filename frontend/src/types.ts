@@ -144,3 +144,48 @@ export interface UserProfile {
   mp_id?: string;
   role_title?: string;
 }
+
+export interface TokenResponse {
+  access_token: string;
+  token_type: string;
+  role: UserRole;
+  username: string;
+  full_name: string;
+  state?: string;
+  district?: string;
+  mp_id?: string;
+  role_title?: string;
+}
+
+export interface DigiGovSummary {
+  total_allocated_limit_cr: number;
+  total_recommended_cr: number;
+  total_sanctioned_cr: number;
+  total_vendor_released_cr: number;
+  works_metrics: {
+    total_works_recommended: number;
+    total_works_sanctioned: number;
+    total_works_completed: number;
+    total_works_in_progress: number;
+    sanction_rate_pct: number;
+    completion_rate_pct: number;
+  };
+}
+
+export interface DigiGovMPRecord {
+  mp_id: string;
+  mp_name: string;
+  house: string;
+  tenure: string;
+  state: string;
+  constituency: string;
+  party: string;
+  allocated_limit_cr: number;
+  amount_recommended_cr: number;
+  amount_sanctioned_cr: number;
+  vendor_payments_released_cr: number;
+  works_recommended: number;
+  works_sanctioned: number;
+  works_completed: number;
+  risk_score: number;
+}

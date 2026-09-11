@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
 import { Work } from '../types';
@@ -9,29 +9,43 @@ import {
 } from 'lucide-react';
 
 export const WorksView: React.FC = () => {
-  const { selectedState, selectedSeverity, setSelectedWorkId, t } = useApp();
+  const { selectedState, selectedSeverity, setSelectedWorkId } = useApp();
   const [works, setWorks] = useState<Work[]>([]);
   const [search, setSearch] = useState<string>('');
   const [categoryFilter, setCategoryFilter] = useState<string>('All');
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [loading, setLoading] = useState<boolean>(true);
+  const searchTimeoutRef = useRef<any>(null);
 
-  useEffect(() => {
+  const fetchWorks = useCallback((overrideSearch?: string) => {
     setLoading(true);
+    const searchVal = overrideSearch !== undefined ? overrideSearch : search;
     api.getWorks({
       state: selectedState,
       risk_band: selectedSeverity,
       category: categoryFilter,
       status: statusFilter,
-      search
+      search: searchVal
     }).then((data) => {
-      setWorks(data);
+      setWorks(data || []);
       setLoading(false);
     }).catch((err) => {
       console.error(err);
       setLoading(false);
     });
   }, [selectedState, selectedSeverity, categoryFilter, statusFilter, search]);
+
+  useEffect(() => {
+    fetchWorks();
+  }, [fetchWorks]);
+
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    searchTimeoutRef.current = setTimeout(() => {
+      fetchWorks(val);
+    }, 300);
+  };
 
   const categories = [
     "All", "Drinking Water", "Sanitation", "Roads & Pathways", 
@@ -40,9 +54,9 @@ export const WorksView: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-fade-in">
       {/* Search & Filter Header */}
-      <div className="bg-gov-card border border-gov-border rounded-xl p-4 flex flex-wrap items-center justify-between gap-3 shadow-gov">
+      <div className="bg-gov-card border border-gov-border rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 shadow-gov">
         <div className="flex items-center space-x-3 flex-1 min-w-[280px]">
           <div className="relative flex-1">
             <Search className="w-4 h-4 text-gov-muted absolute left-3 top-1/2 -translate-y-1/2" />
@@ -50,8 +64,8 @@ export const WorksView: React.FC = () => {
               type="text"
               placeholder="Search works by ID, description, sanction order, or district..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-gov-card text-xs text-gov-primary pl-9 pr-4 py-2 rounded-lg border border-gov-border focus:outline-none focus:border-orange-500 placeholder:text-gov-muted font-medium shadow-xs"
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="w-full bg-gov-card text-xs text-gov-primary pl-9 pr-4 py-2.5 rounded-xl border border-gov-border focus:outline-none focus:border-orange-500 placeholder:text-gov-muted font-medium shadow-xs"
             />
           </div>
         </div>
@@ -61,10 +75,10 @@ export const WorksView: React.FC = () => {
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="bg-gov-card text-xs text-gov-primary px-3.5 py-2 rounded-lg border border-gov-border focus:outline-none focus:border-orange-500 font-medium cursor-pointer shadow-xs"
+            className="bg-gov-card text-xs text-gov-primary px-3.5 py-2.5 rounded-xl border border-gov-border focus:outline-none focus:border-orange-500 font-medium cursor-pointer shadow-xs"
           >
             {categories.map((c) => (
-              <option key={c} value={c} className="bg-gov-card text-gov-primary">{c === 'All' ? 'All Sectors' : c}</option>
+              <option key={c} value={c}>{c === 'All' ? 'All Sectors' : c}</option>
             ))}
           </select>
 
@@ -72,18 +86,18 @@ export const WorksView: React.FC = () => {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-gov-card text-xs text-gov-primary px-3.5 py-2 rounded-lg border border-gov-border focus:outline-none focus:border-orange-500 font-medium cursor-pointer shadow-xs"
+            className="bg-gov-card text-xs text-gov-primary px-3.5 py-2.5 rounded-xl border border-gov-border focus:outline-none focus:border-orange-500 font-medium cursor-pointer shadow-xs"
           >
-            <option value="All" className="bg-gov-card text-gov-primary">All Statuses</option>
-            <option value="In-Progress" className="bg-gov-card text-gov-primary">In-Progress</option>
-            <option value="Completed" className="bg-gov-card text-gov-primary">Completed</option>
-            <option value="Sanctioned" className="bg-gov-card text-gov-primary">Sanctioned</option>
+            <option value="All">All Statuses</option>
+            <option value="In-Progress">In-Progress</option>
+            <option value="Completed">Completed</option>
+            <option value="Sanctioned">Sanctioned</option>
           </select>
         </div>
       </div>
 
       {/* Works Table */}
-      <div className="bg-gov-card border border-gov-border rounded-xl shadow-gov overflow-hidden">
+      <div className="bg-gov-card border border-gov-border rounded-2xl shadow-gov overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs text-gov-secondary">
             <thead className="bg-slate-100 dark:bg-slate-900/90 text-gov-primary uppercase tracking-wider font-bold border-b border-gov-border">
@@ -99,11 +113,13 @@ export const WorksView: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-gov-border">
               {loading ? (
-                <tr>
-                  <td colSpan={7} className="p-8 text-center text-gov-muted font-medium">
-                    Loading works database...
-                  </td>
-                </tr>
+                [1, 2, 3, 4, 5, 6].map((i) => (
+                  <tr key={i}>
+                    <td colSpan={7} className="p-3">
+                      <div className="h-7 skeleton-shimmer w-full"></div>
+                    </td>
+                  </tr>
+                ))
               ) : works.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="p-8 text-center text-gov-muted font-medium">
@@ -182,7 +198,7 @@ export const WorksView: React.FC = () => {
                       <td className="p-3 text-right">
                         <button
                           onClick={() => setSelectedWorkId(w.work_id)}
-                          className="p-1.5 rounded-full bg-gov-card hover:bg-gov-card-muted text-gov-primary border border-gov-border transition shadow-sm cursor-pointer"
+                          className="p-1.5 rounded-full bg-gov-card hover:bg-gov-card-muted text-gov-primary border border-gov-border transition shadow-xs cursor-pointer"
                           title="Open Work Dossier"
                         >
                           <Eye className="w-4 h-4" />

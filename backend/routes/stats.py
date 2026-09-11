@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from typing import Optional, List, Dict, Any
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 
 from backend.database import get_db
 from backend.models import Work, MP, ImplementingAgency, UtilizationCertificate, AnomalyAlert
@@ -55,7 +55,7 @@ def get_dashboard_kpis(
         "open_alerts_count": len(alerts),
         "critical_alerts_count": len(critical_alerts),
         "high_alerts_count": len(high_alerts),
-        "synced_time": datetime.utcnow().strftime("%H:%M UTC")
+        "synced_time": datetime.now(timezone.utc).strftime("%H:%M UTC")
     }
 
 @router.get("/districts-heatmap")

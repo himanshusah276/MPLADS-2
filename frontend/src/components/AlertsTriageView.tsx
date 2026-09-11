@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
-import { AnomalyAlert, AlertStatus, Severity } from '../types';
+import { AnomalyAlert } from '../types';
 import { 
   Search, 
   Download, 
@@ -9,22 +9,26 @@ import {
 } from 'lucide-react';
 
 export const AlertsTriageView: React.FC = () => {
-  const { selectedState, selectedSeverity, setOpenTriageAlertId, setSelectedWorkId, isAnalyzing, t } = useApp();
+  const { selectedState, selectedSeverity, setOpenTriageAlertId, setSelectedWorkId, isAnalyzing, openTriageAlertId } = useApp();
   const [alerts, setAlerts] = useState<AnomalyAlert[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [search, setSearch] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
 
-  useEffect(() => {
+  const fetchAlerts = useCallback(() => {
     setLoading(true);
     api.getAlerts(selectedSeverity, statusFilter, selectedState).then((data) => {
-      setAlerts(data);
+      setAlerts(data || []);
       setLoading(false);
     }).catch((err) => {
       console.error(err);
       setLoading(false);
     });
-  }, [selectedState, selectedSeverity, statusFilter, isAnalyzing]);
+  }, [selectedState, selectedSeverity, statusFilter]);
+
+  useEffect(() => {
+    fetchAlerts();
+  }, [fetchAlerts, isAnalyzing, openTriageAlertId]);
 
   const filteredAlerts = alerts.filter(a => {
     if (!search) return true;
@@ -65,9 +69,9 @@ export const AlertsTriageView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-fade-in">
       {/* Controls Bar */}
-      <div className="bg-gov-card border border-gov-border rounded-xl p-4 flex flex-wrap items-center justify-between gap-3 shadow-gov">
+      <div className="bg-gov-card border border-gov-border rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 shadow-gov">
         <div className="flex items-center space-x-3 flex-1 min-w-[280px]">
           <div className="relative flex-1">
             <Search className="w-4 h-4 text-gov-muted absolute left-3 top-1/2 -translate-y-1/2" />
@@ -76,13 +80,13 @@ export const AlertsTriageView: React.FC = () => {
               placeholder="Search alerts by ID, rule, MP, or description..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-gov-card text-xs text-gov-primary pl-9 pr-4 py-2 rounded-lg border border-gov-border focus:outline-none focus:border-orange-500 placeholder:text-gov-muted font-medium shadow-xs"
+              className="w-full bg-gov-card text-xs text-gov-primary pl-9 pr-4 py-2.5 rounded-xl border border-gov-border focus:outline-none focus:border-orange-500 placeholder:text-gov-muted font-medium shadow-xs"
             />
           </div>
         </div>
 
         <div className="flex items-center space-x-2">
-          {/* Status Tabs (Rounded pills) */}
+          {/* Status Tabs */}
           <div className="flex bg-gov-card-muted p-0.5 rounded-full border border-gov-border text-xs">
             {['All', 'Open', 'Under Review', 'Resolved', 'False Positive'].map((st) => (
               <button
@@ -101,7 +105,7 @@ export const AlertsTriageView: React.FC = () => {
 
           <button
             onClick={exportCSV}
-            className="flex items-center space-x-1.5 bg-gov-card hover:bg-gov-card-muted text-gov-primary text-xs font-semibold px-3.5 py-2 rounded-lg border border-gov-border transition shadow-sm cursor-pointer"
+            className="flex items-center space-x-1.5 bg-gov-card hover:bg-gov-card-muted text-gov-primary text-xs font-semibold px-3.5 py-2 rounded-xl border border-gov-border transition shadow-xs cursor-pointer"
           >
             <Download className="w-3.5 h-3.5 text-gov-muted" />
             <span>Export CSV</span>
@@ -112,18 +116,18 @@ export const AlertsTriageView: React.FC = () => {
       {/* Alerts Grid */}
       <div className="space-y-3">
         {loading ? (
-          <div className="bg-gov-card p-12 text-center text-gov-muted border border-gov-border rounded-xl font-medium">
-            Loading anomaly alerts & triage audit log...
-          </div>
+          [1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-gov-card p-6 border border-gov-border rounded-2xl skeleton-shimmer h-28"></div>
+          ))
         ) : filteredAlerts.length === 0 ? (
-          <div className="bg-gov-card p-12 text-center text-gov-muted border border-gov-border rounded-xl font-medium">
+          <div className="bg-gov-card p-12 text-center text-gov-muted border border-gov-border rounded-2xl font-medium">
             No anomaly alerts match the selected criteria.
           </div>
         ) : (
           filteredAlerts.map((a) => (
             <div
               key={a.alert_id}
-              className={`bg-gov-card border p-4 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4 transition shadow-gov ${
+              className={`bg-gov-card border p-4 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 transition shadow-gov card-hover-lift ${
                 a.severity === 'Critical' ? 'border-l-4 border-l-red-600' :
                 a.severity === 'High' ? 'border-l-4 border-l-orange-500' :
                 a.severity === 'Medium' ? 'border-l-4 border-l-amber-500' :
@@ -185,14 +189,14 @@ export const AlertsTriageView: React.FC = () => {
                 {a.entity_type === 'work' && (
                   <button
                     onClick={() => setSelectedWorkId(a.entity_id)}
-                    className="px-3.5 py-1.5 bg-gov-card hover:bg-gov-card-muted text-gov-primary text-xs font-semibold rounded-lg border border-gov-border transition cursor-pointer"
+                    className="px-3.5 py-1.5 bg-gov-card hover:bg-gov-card-muted text-gov-primary text-xs font-semibold rounded-xl border border-gov-border transition cursor-pointer"
                   >
                     Work Dossier
                   </button>
                 )}
                 <button
                   onClick={() => setOpenTriageAlertId(a.alert_id)}
-                  className="px-4 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold rounded-lg shadow-sm hover:shadow transition flex items-center gap-1.5 cursor-pointer"
+                  className="px-4 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold rounded-xl shadow-xs hover:shadow transition flex items-center gap-1.5 cursor-pointer active:scale-98"
                 >
                   <FileCheck className="w-3.5 h-3.5" />
                   <span>Triage Decision</span>

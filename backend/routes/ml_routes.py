@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timezone
 from backend.database import get_db
 from backend.ml.pipeline import pipeline_instance
 from backend.schemas import PreCheckWorkRequest, PreCheckWorkResponse
@@ -26,7 +26,7 @@ def retrain_models(db: Session = Depends(get_db)):
         "status": "success",
         "message": "Isolation Forest and TF-IDF models retrained on latest sanction datasets.",
         "details": result,
-        "retrained_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        "retrained_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     }
 
 @router.get("/metrics")

@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
 import { PreCheckWorkResponse } from '../types';
 import { 
@@ -10,7 +9,6 @@ import {
 } from 'lucide-react';
 
 export const PreCheckSimulatorModal: React.FC = () => {
-  const { t } = useApp();
   const [mpId, setMpId] = useState<string>('MP-LS-0101');
   const [state, setState] = useState<string>('Maharashtra');
   const [district, setDistrict] = useState<string>('Nashik');

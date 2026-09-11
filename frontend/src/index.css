@@ -2,7 +2,7 @@
 @import "leaflet/dist/leaflet.css";
 
 /* ==========================================================================
-   Modern GovTech Styling - Rounded Buttons & Smooth Components
+   Modern GovTech Styling & Animation Design System
    ========================================================================== */
 
 button,
@@ -10,7 +10,8 @@ button,
 input[type="button"],
 input[type="submit"],
 .btn {
-  border-radius: 0.5rem; /* 8px rounded edges for buttons */
+  border-radius: 0.5rem;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 :root,
@@ -20,20 +21,20 @@ html.light {
   color-scheme: light;
 
   /* Light Theme (GovTech Realism - NIC / MoSPI Standard) */
-  --bg-app: #f4f6f9;
+  --bg-app: #f1f5f9;
   --bg-header: #ffffff;
   --bg-card: #ffffff;
   --bg-card-hover: #f8fafc;
-  --bg-card-muted: #f1f5f9;
+  --bg-card-muted: #f8fafc;
   --bg-sidebar: #ffffff;
-  --bg-sidebar-active: #e2e8f0;
+  --bg-sidebar-active: #f1f5f9;
   --bg-sidebar-hover: #f8fafc;
   --bg-input: #ffffff;
   --bg-dropdown: #ffffff;
 
-  --border-gov: #cbd5e1;
-  --border-gov-subtle: #e2e8f0;
-  --border-gov-strong: #94a3b8;
+  --border-gov: #e2e8f0;
+  --border-gov-subtle: #f1f5f9;
+  --border-gov-strong: #cbd5e1;
 
   --text-primary: #0f172a;
   --text-secondary: #334155;
@@ -46,8 +47,9 @@ html.light {
   --table-row-hover: #f1f5f9;
   --table-zebra: #fafbfc;
 
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-modal: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  --shadow-card-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+  --shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
 }
 
 [data-theme="dark"],
@@ -83,7 +85,8 @@ html.dark {
   --table-zebra: #131d33;
 
   --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.4);
-  --shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.7);
+  --shadow-card-hover: 0 10px 20px -5px rgba(0, 0, 0, 0.6);
+  --shadow-modal: 0 25px 50px -12px rgba(0, 0, 0, 0.85);
 }
 
 body {
@@ -93,7 +96,7 @@ body {
   color: var(--text-primary);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 /* Custom GovTech scrollbars */
@@ -117,11 +120,11 @@ body {
   width: 100%;
   height: 100%;
   background: var(--bg-card-muted) !important;
-  border-radius: 0.5rem;
+  border-radius: 0.75rem;
 }
 
 [data-theme="dark"] .leaflet-tile {
-  filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
+  filter: brightness(0.65) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.75);
 }
 
 [data-theme="light"] .leaflet-tile {
@@ -132,8 +135,9 @@ body {
   background: var(--bg-card) !important;
   color: var(--text-primary) !important;
   border: 1px solid var(--border-gov);
-  border-radius: 8px;
+  border-radius: 12px;
   box-shadow: var(--shadow-modal);
+  padding: 4px;
 }
 
 .leaflet-popup-tip {
@@ -149,9 +153,6 @@ body {
 }
 .bg-gov-card {
   background-color: var(--bg-card);
-}
-.bg-gov-card-hover:hover {
-  background-color: var(--bg-card-hover);
 }
 .bg-gov-card-muted {
   background-color: var(--bg-card-muted);
@@ -181,6 +182,135 @@ body {
 .shadow-gov {
   box-shadow: var(--shadow-card);
 }
+.shadow-gov-hover {
+  box-shadow: var(--shadow-card-hover);
+}
 .shadow-gov-modal {
   box-shadow: var(--shadow-modal);
+}
+
+/* ==========================================================================
+   Smooth Animations & Keyframes
+   ========================================================================== */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 2s infinite ease-in-out;
+}
+
+.animate-shake {
+  animation: shake 0.4s ease-in-out;
+}
+
+/* Skeleton Loading Shimmer */
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--bg-card-muted) 0%,
+    var(--border-gov) 50%,
+    var(--bg-card-muted) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 0.5rem;
+}
+
+/* Interactive Card Hover Lift */
+.card-hover-lift {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease;
+}
+
+.card-hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card-hover);
+}
+
+/* Tab Content Transition */
+.tab-fade-enter {
+  animation: fadeIn 0.25s ease-out;
 }

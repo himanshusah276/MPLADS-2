@@ -1,29 +1,33 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useApp } from '../context/AppContext';
+import { api } from '../services/api';
+import { DigiGovSummary, DigiGovMPRecord } from '../types';
 import { 
   Search, 
   Download, 
   RotateCcw, 
   Eye, 
-  Layers
+  Layers,
+  ExternalLink
 } from 'lucide-react';
 
 export const DigiGovDashboardView: React.FC = () => {
-  const { setSelectedMPId, setActiveTab, t } = useApp();
+  const { setSelectedMPId, setActiveTab } = useApp();
   const [tenure, setTenure] = useState<string>('All');
   const [state, setState] = useState<string>('All');
   const [constituency, setConstituency] = useState<string>('All');
   const [search, setSearch] = useState<string>('');
   
-  const [summary, setSummary] = useState<any>(null);
-  const [mpsData, setMpsData] = useState<any[]>([]);
+  const [summary, setSummary] = useState<DigiGovSummary | null>(null);
+  const [mpsData, setMpsData] = useState<DigiGovMPRecord[]>([]);
   const [constituencyMap, setConstituencyMap] = useState<Record<string, string[]>>({});
   const [statesList, setStatesList] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const searchTimeoutRef = useRef<any>(null);
 
+  // Load constituencies once
   useEffect(() => {
-    fetch('http://localhost:8000/api/digigov/constituencies')
-      .then(res => res.json())
+    api.getDigiGovConstituencies()
       .then(data => {
         if (data) {
           setStatesList(data.states || []);
@@ -31,26 +35,36 @@ export const DigiGovDashboardView: React.FC = () => {
         }
       })
       .catch(console.error);
-
-    fetchData();
   }, []);
 
-  const fetchData = () => {
+  const fetchData = useCallback((overrideSearch?: string) => {
     setLoading(true);
-    const summaryUrl = `http://localhost:8000/api/digigov/summary?tenure=${tenure}&state=${state}`;
-    const mpsUrl = `http://localhost:8000/api/digigov/mps?tenure=${tenure}&state=${state}&constituency=${constituency}&search=${search}`;
+    const searchVal = overrideSearch !== undefined ? overrideSearch : search;
 
     Promise.all([
-      fetch(summaryUrl).then(r => r.json()),
-      fetch(mpsUrl).then(r => r.json())
+      api.getDigiGovSummary(tenure, state),
+      api.getDigiGovMPs({ tenure, state, constituency, search: searchVal })
     ]).then(([sData, mData]) => {
       setSummary(sData);
-      setMpsData(mData);
+      setMpsData(mData || []);
       setLoading(false);
     }).catch(err => {
       console.error(err);
       setLoading(false);
     });
+  }, [tenure, state, constituency, search]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Debounced search
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    searchTimeoutRef.current = setTimeout(() => {
+      fetchData(val);
+    }, 300);
   };
 
   const handleReset = () => {
@@ -58,15 +72,15 @@ export const DigiGovDashboardView: React.FC = () => {
     setState('All');
     setConstituency('All');
     setSearch('');
-    setTimeout(() => {
-      fetch('http://localhost:8000/api/digigov/summary').then(r => r.json()).then(setSummary);
-      fetch('http://localhost:8000/api/digigov/mps').then(r => r.json()).then(setMpsData);
-    }, 50);
-  };
-
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    fetchData();
+    setLoading(true);
+    Promise.all([
+      api.getDigiGovSummary('All', 'All'),
+      api.getDigiGovMPs()
+    ]).then(([sData, mData]) => {
+      setSummary(sData);
+      setMpsData(mData || []);
+      setLoading(false);
+    }).catch(() => setLoading(false));
   };
 
   const availableConstituencies = state !== 'All' && constituencyMap[state] 
@@ -74,17 +88,17 @@ export const DigiGovDashboardView: React.FC = () => {
     : Object.values(constituencyMap).flat();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       {/* Official MoSPI DigiGov Banner */}
-      <div className="bg-gov-card border border-gov-border rounded-xl p-6 shadow-gov border-t-4 border-t-orange-600">
+      <div className="bg-gov-card border border-gov-border rounded-2xl p-6 shadow-gov border-t-4 border-t-orange-600">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <div className="flex items-center space-x-2">
               <span className="text-[11px] bg-orange-600 text-white font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                 Official Public Portal
               </span>
-              <span className="text-xs text-gov-muted font-medium">
-                Source: <a href="https://mplads.mospi.gov.in/digigov/dashboard.html" target="_blank" rel="noreferrer" className="text-orange-600 dark:text-orange-400 underline font-semibold">mplads.mospi.gov.in/digigov/dashboard.html</a>
+              <span className="text-xs text-gov-muted font-medium flex items-center gap-1">
+                Source: <a href="https://mplads.mospi.gov.in/digigov/dashboard.html" target="_blank" rel="noreferrer" className="text-orange-600 dark:text-orange-400 underline font-semibold flex items-center gap-0.5">mplads.mospi.gov.in <ExternalLink className="w-3 h-3" /></a>
               </span>
             </div>
             <h1 className="text-xl font-black text-gov-primary tracking-tight">
@@ -96,8 +110,8 @@ export const DigiGovDashboardView: React.FC = () => {
           </div>
 
           <a
-            href="http://localhost:8000/api/digigov/export"
-            className="flex items-center space-x-2 bg-gov-card hover:bg-gov-card-muted text-gov-primary text-xs font-bold px-4 py-2.5 rounded-lg border border-gov-border transition shadow-sm cursor-pointer"
+            href={api.getDigiGovExportUrl()}
+            className="flex items-center space-x-2 bg-gov-card hover:bg-gov-card-muted text-gov-primary text-xs font-bold px-4 py-2.5 rounded-xl border border-gov-border transition shadow-xs cursor-pointer card-hover-lift"
             download
           >
             <Download className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -107,7 +121,7 @@ export const DigiGovDashboardView: React.FC = () => {
       </div>
 
       {/* Official DigiGov 4-Field Search Form */}
-      <form onSubmit={handleSearchSubmit} className="bg-gov-card border border-gov-border rounded-xl p-5 shadow-gov space-y-4">
+      <div className="bg-gov-card border border-gov-border rounded-2xl p-5 shadow-gov space-y-4">
         <div className="text-xs font-bold text-gov-primary uppercase tracking-wider flex items-center gap-2">
           <Search className="w-4 h-4 text-orange-600 dark:text-orange-400" />
           <span>Constituency & MP Inquiry Search</span>
@@ -120,12 +134,12 @@ export const DigiGovDashboardView: React.FC = () => {
             <select
               value={tenure}
               onChange={(e) => setTenure(e.target.value)}
-              className="w-full bg-gov-card text-xs text-gov-primary p-2.5 rounded-lg border border-gov-border focus:outline-none focus:border-orange-500 font-medium cursor-pointer shadow-xs"
+              className="w-full bg-gov-card text-xs text-gov-primary p-2.5 rounded-xl border border-gov-border focus:outline-none focus:border-orange-500 font-medium cursor-pointer shadow-xs"
             >
-              <option value="All" className="bg-gov-card text-gov-primary">All Tenures (18th LS / 17th LS / RS)</option>
-              <option value="18th Lok Sabha (2024-2029)" className="bg-gov-card text-gov-primary">18th Lok Sabha (2024–2029)</option>
-              <option value="17th Lok Sabha (2019-2024)" className="bg-gov-card text-gov-primary">17th Lok Sabha (2019–2024)</option>
-              <option value="Rajya Sabha" className="bg-gov-card text-gov-primary">Rajya Sabha</option>
+              <option value="All">All Tenures (18th LS / 17th LS / RS)</option>
+              <option value="18th Lok Sabha (2024-2029)">18th Lok Sabha (2024–2029)</option>
+              <option value="17th Lok Sabha (2019-2024)">17th Lok Sabha (2019–2024)</option>
+              <option value="Rajya Sabha">Rajya Sabha</option>
             </select>
           </div>
 
@@ -138,11 +152,11 @@ export const DigiGovDashboardView: React.FC = () => {
                 setState(e.target.value);
                 setConstituency('All');
               }}
-              className="w-full bg-gov-card text-xs text-gov-primary p-2.5 rounded-lg border border-gov-border focus:outline-none focus:border-orange-500 font-medium cursor-pointer shadow-xs"
+              className="w-full bg-gov-card text-xs text-gov-primary p-2.5 rounded-xl border border-gov-border focus:outline-none focus:border-orange-500 font-medium cursor-pointer shadow-xs"
             >
-              <option value="All" className="bg-gov-card text-gov-primary">All States / UTs</option>
+              <option value="All">All States / UTs</option>
               {statesList.map(st => (
-                <option key={st} value={st} className="bg-gov-card text-gov-primary">{st}</option>
+                <option key={st} value={st}>{st}</option>
               ))}
             </select>
           </div>
@@ -153,9 +167,9 @@ export const DigiGovDashboardView: React.FC = () => {
             <select
               value={constituency}
               onChange={(e) => setConstituency(e.target.value)}
-              className="w-full bg-gov-card text-xs text-gov-primary p-2.5 rounded-lg border border-gov-border focus:outline-none focus:border-orange-500 font-medium cursor-pointer shadow-xs"
+              className="w-full bg-gov-card text-xs text-gov-primary p-2.5 rounded-xl border border-gov-border focus:outline-none focus:border-orange-500 font-medium cursor-pointer shadow-xs"
             >
-              <option value="All" className="bg-gov-card text-gov-primary">All Constituencies</option>
+              <option value="All">All Constituencies</option>
               {Array.from(new Set(availableConstituencies)).map(c => (
                 <option key={c} value={c}>{c}</option>
               ))}
@@ -169,8 +183,8 @@ export const DigiGovDashboardView: React.FC = () => {
               type="text"
               placeholder="Search MP name or party..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-gov-card text-xs text-gov-primary p-2.5 rounded-lg border border-gov-border focus:outline-none focus:border-orange-500 placeholder:text-gov-muted font-medium shadow-xs"
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="w-full bg-gov-card text-xs text-gov-primary p-2.5 rounded-xl border border-gov-border focus:outline-none focus:border-orange-500 placeholder:text-gov-muted font-medium shadow-xs"
             />
           </div>
         </div>
@@ -180,26 +194,27 @@ export const DigiGovDashboardView: React.FC = () => {
           <button
             type="button"
             onClick={handleReset}
-            className="flex items-center space-x-1.5 px-4 py-2 bg-gov-card hover:bg-gov-card-muted text-gov-primary text-xs font-semibold rounded-lg border border-gov-border transition shadow-sm cursor-pointer"
+            className="flex items-center space-x-1.5 px-4 py-2 bg-gov-card hover:bg-gov-card-muted text-gov-primary text-xs font-semibold rounded-xl border border-gov-border transition shadow-xs cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5 text-gov-muted" />
             <span>Reset</span>
           </button>
           <button
-            type="submit"
-            className="flex items-center space-x-2 px-6 py-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold rounded-lg shadow-sm hover:shadow transition cursor-pointer"
+            type="button"
+            onClick={() => fetchData()}
+            className="flex items-center space-x-2 px-6 py-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold rounded-xl shadow-xs hover:shadow transition cursor-pointer active:scale-98"
           >
             <Search className="w-3.5 h-3.5" />
             <span>Search</span>
           </button>
         </div>
-      </form>
+      </div>
 
       {/* Official DigiGov Summary KPI Tiles */}
       {summary && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Allocated Limit */}
-          <div className="bg-gov-card border border-gov-border rounded-xl p-4 shadow-gov border-t-2 border-t-blue-600">
+          <div className="bg-gov-card border border-gov-border rounded-2xl p-4 shadow-gov card-hover-lift border-t-2 border-t-blue-600">
             <div className="text-[11px] font-bold text-gov-muted uppercase tracking-wider">
               Allocated Limit
             </div>
@@ -212,7 +227,7 @@ export const DigiGovDashboardView: React.FC = () => {
           </div>
 
           {/* Amount Recommended */}
-          <div className="bg-gov-card border border-gov-border rounded-xl p-4 shadow-gov border-t-2 border-t-orange-600">
+          <div className="bg-gov-card border border-gov-border rounded-2xl p-4 shadow-gov card-hover-lift border-t-2 border-t-orange-600">
             <div className="text-[11px] font-bold text-gov-muted uppercase tracking-wider">
               Amount Recommended
             </div>
@@ -225,7 +240,7 @@ export const DigiGovDashboardView: React.FC = () => {
           </div>
 
           {/* Amount Sanctioned */}
-          <div className="bg-gov-card border border-gov-border rounded-xl p-4 shadow-gov border-t-2 border-t-indigo-600">
+          <div className="bg-gov-card border border-gov-border rounded-2xl p-4 shadow-gov card-hover-lift border-t-2 border-t-indigo-600">
             <div className="text-[11px] font-bold text-gov-muted uppercase tracking-wider">
               Amount Sanctioned
             </div>
@@ -238,7 +253,7 @@ export const DigiGovDashboardView: React.FC = () => {
           </div>
 
           {/* Vendor Payments Released */}
-          <div className="bg-gov-card border border-gov-border rounded-xl p-4 shadow-gov border-t-2 border-t-emerald-600">
+          <div className="bg-gov-card border border-gov-border rounded-2xl p-4 shadow-gov card-hover-lift border-t-2 border-t-emerald-600">
             <div className="text-[11px] font-bold text-gov-muted uppercase tracking-wider">
               Vendor Payments Released
             </div>
@@ -254,7 +269,7 @@ export const DigiGovDashboardView: React.FC = () => {
       )}
 
       {/* Official DigiGov Results Table */}
-      <div className="bg-gov-card border border-gov-border rounded-xl shadow-gov overflow-hidden">
+      <div className="bg-gov-card border border-gov-border rounded-2xl shadow-gov overflow-hidden">
         <div className="p-4 bg-slate-100 dark:bg-slate-900/90 border-b border-gov-border flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Layers className="w-4 h-4 text-orange-600 dark:text-orange-400" />
@@ -285,11 +300,13 @@ export const DigiGovDashboardView: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-gov-border">
               {loading ? (
-                <tr>
-                  <td colSpan={10} className="p-8 text-center text-gov-muted font-medium">
-                    Loading official eSAKSHI DigiGov dataset...
-                  </td>
-                </tr>
+                [1, 2, 3, 4, 5].map((i) => (
+                  <tr key={i}>
+                    <td colSpan={10} className="p-3">
+                      <div className="h-6 skeleton-shimmer w-full"></div>
+                    </td>
+                  </tr>
+                ))
               ) : mpsData.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="p-8 text-center text-gov-muted font-medium">
@@ -355,7 +372,7 @@ export const DigiGovDashboardView: React.FC = () => {
                           setSelectedMPId(m.mp_id);
                           setActiveTab('mps');
                         }}
-                        className="p-1.5 rounded-full bg-gov-card hover:bg-gov-card-muted text-gov-primary border border-gov-border transition cursor-pointer"
+                        className="p-1.5 rounded-full bg-gov-card hover:bg-gov-card-muted text-gov-primary border border-gov-border transition cursor-pointer shadow-xs"
                         title="View MP Entitlement & Works Dossier"
                       >
                         <Eye className="w-4 h-4" />

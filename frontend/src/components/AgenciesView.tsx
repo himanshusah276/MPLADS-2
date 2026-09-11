@@ -1,24 +1,26 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
 import { ImplementingAgency } from '../types';
 import { Search, AlertTriangle } from 'lucide-react';
 
 export const AgenciesView: React.FC = () => {
-  const { selectedState, t } = useApp();
+  const { selectedState } = useApp();
   const [agencies, setAgencies] = useState<ImplementingAgency[]>([]);
   const [search, setSearch] = useState<string>('');
   const [typeFilter, setTypeFilter] = useState<string>('All');
   const [loading, setLoading] = useState<boolean>(true);
+  const searchTimeoutRef = useRef<any>(null);
 
-  useEffect(() => {
+  const fetchAgencies = useCallback((overrideSearch?: string) => {
     setLoading(true);
+    const searchVal = overrideSearch !== undefined ? overrideSearch : search;
     api.getAgencies({
       state: selectedState,
       agency_type: typeFilter,
-      search
+      search: searchVal
     }).then((data) => {
-      setAgencies(data);
+      setAgencies(data || []);
       setLoading(false);
     }).catch((err) => {
       console.error(err);
@@ -26,10 +28,22 @@ export const AgenciesView: React.FC = () => {
     });
   }, [selectedState, typeFilter, search]);
 
+  useEffect(() => {
+    fetchAgencies();
+  }, [fetchAgencies]);
+
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    searchTimeoutRef.current = setTimeout(() => {
+      fetchAgencies(val);
+    }, 300);
+  };
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-fade-in">
       {/* Header Controls */}
-      <div className="bg-gov-card border border-gov-border rounded-xl p-4 flex flex-wrap items-center justify-between gap-3 shadow-gov">
+      <div className="bg-gov-card border border-gov-border rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 shadow-gov">
         <div className="flex items-center space-x-3 flex-1 min-w-[280px]">
           <div className="relative flex-1">
             <Search className="w-4 h-4 text-gov-muted absolute left-3 top-1/2 -translate-y-1/2" />
@@ -37,8 +51,8 @@ export const AgenciesView: React.FC = () => {
               type="text"
               placeholder="Search implementing agency by name or ID..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-gov-card text-xs text-gov-primary pl-9 pr-4 py-2 rounded-lg border border-gov-border focus:outline-none focus:border-orange-500 placeholder:text-gov-muted font-medium shadow-xs"
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="w-full bg-gov-card text-xs text-gov-primary pl-9 pr-4 py-2.5 rounded-xl border border-gov-border focus:outline-none focus:border-orange-500 placeholder:text-gov-muted font-medium shadow-xs"
             />
           </div>
         </div>
@@ -46,25 +60,25 @@ export const AgenciesView: React.FC = () => {
         <select
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value)}
-          className="bg-gov-card text-xs text-gov-primary px-3.5 py-2 rounded-lg border border-gov-border focus:outline-none focus:border-orange-500 font-medium cursor-pointer shadow-xs"
+          className="bg-gov-card text-xs text-gov-primary px-3.5 py-2.5 rounded-xl border border-gov-border focus:outline-none focus:border-orange-500 font-medium cursor-pointer shadow-xs"
         >
-          <option value="All" className="bg-gov-card text-gov-primary">All Agency Types</option>
-          <option value="Govt Dept" className="bg-gov-card text-gov-primary">Govt Department (PWD/RD)</option>
-          <option value="PSU" className="bg-gov-card text-gov-primary">PSU / Jal Nigam</option>
-          <option value="Local Body" className="bg-gov-card text-gov-primary">Municipal Corporation / ZP</option>
-          <option value="Trust" className="bg-gov-card text-gov-primary">Trust (Subject to ₹50L Cap)</option>
-          <option value="Society" className="bg-gov-card text-gov-primary">Society (Subject to ₹50L Cap)</option>
+          <option value="All">All Agency Types</option>
+          <option value="Govt Dept">Govt Department (PWD/RD)</option>
+          <option value="PSU">PSU / Jal Nigam</option>
+          <option value="Local Body">Municipal Corporation / ZP</option>
+          <option value="Trust">Trust (Subject to ₹50L Cap)</option>
+          <option value="Society">Society (Subject to ₹50L Cap)</option>
         </select>
       </div>
 
       {/* Agencies Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {loading ? (
-          <div className="col-span-full bg-gov-card p-12 text-center text-gov-muted border border-gov-border rounded-xl font-medium">
-            Loading implementing agencies...
-          </div>
+          [1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="bg-gov-card p-6 border border-gov-border rounded-2xl skeleton-shimmer h-44"></div>
+          ))
         ) : agencies.length === 0 ? (
-          <div className="col-span-full bg-gov-card p-12 text-center text-gov-muted border border-gov-border rounded-xl font-medium">
+          <div className="col-span-full bg-gov-card p-12 text-center text-gov-muted border border-gov-border rounded-2xl font-medium">
             No matching agencies found.
           </div>
         ) : (
@@ -73,7 +87,7 @@ export const AgenciesView: React.FC = () => {
             return (
               <div
                 key={ag.agency_id}
-                className="bg-gov-card border border-gov-border hover:border-slate-400 dark:hover:border-slate-500 rounded-xl p-4 flex flex-col justify-between space-y-3 transition shadow-gov"
+                className="bg-gov-card border border-gov-border hover:border-slate-400 dark:hover:border-slate-500 rounded-2xl p-4 flex flex-col justify-between space-y-3 transition shadow-gov card-hover-lift"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2">
@@ -99,7 +113,7 @@ export const AgenciesView: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="bg-gov-card-muted p-3 rounded-lg border border-gov-border space-y-1.5 text-xs font-medium">
+                <div className="bg-gov-card-muted p-3 rounded-xl border border-gov-border space-y-1.5 text-xs font-medium">
                   <div className="flex justify-between text-gov-secondary">
                     <span>Works Handled:</span>
                     <span className="font-mono font-bold text-gov-primary">{ag.total_works_handled}</span>
@@ -119,7 +133,7 @@ export const AgenciesView: React.FC = () => {
                 </div>
 
                 {isTrustCapRisk && (
-                  <div className="bg-red-500/15 border border-red-500/40 p-2.5 rounded-lg text-[11px] text-red-700 dark:text-red-300 font-semibold flex items-center gap-1.5">
+                  <div className="bg-red-500/15 border border-red-500/40 p-2.5 rounded-xl text-[11px] text-red-700 dark:text-red-300 font-semibold flex items-center gap-1.5">
                     <AlertTriangle className="w-3.5 h-3.5 text-red-600 dark:text-red-400 shrink-0" />
                     <span>Nearing/Exceeding ₹50 Lakh Trust Statutory Ceiling</span>
                   </div>

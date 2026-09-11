@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Any, Tuple
 from collections import defaultdict
 
@@ -327,7 +327,7 @@ class MPLADSMLPipeline:
                 description=alert_dict["description"],
                 rule_code=alert_dict.get("rule_code"),
                 explainable_details=alert_dict.get("explainable_details"),
-                detected_on=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+                detected_on=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
                 status="Open"
             )
             new_alert_objects.append(alert_obj)
@@ -344,7 +344,7 @@ class MPLADSMLPipeline:
             "low_count": sum(1 for a in new_alert_objects if a.severity == "Low"),
             "analyzed_works_count": len(works),
             "analyzed_mps_count": len(mps),
-            "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+            "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         }
 
 pipeline_instance = MPLADSMLPipeline()

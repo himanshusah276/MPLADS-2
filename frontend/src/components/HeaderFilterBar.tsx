@@ -1,6 +1,6 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { RotateCw, ChevronDown } from 'lucide-react';
+import { RotateCw, ChevronDown, Sparkles } from 'lucide-react';
 
 const STATE_OPTIONS = [
   "All states",
@@ -53,7 +53,7 @@ export const HeaderFilterBar: React.FC = () => {
           <select
             value={financialYear}
             onChange={(e) => setFinancialYear(e.target.value)}
-            className="appearance-none bg-gov-card text-gov-primary text-xs font-semibold px-4 py-2 pr-9 rounded-lg border border-gov-border hover:border-slate-400 dark:hover:border-slate-500 focus:outline-none focus:border-orange-500 transition cursor-pointer shadow-sm"
+            className="appearance-none bg-gov-card text-gov-primary text-xs font-semibold px-4 py-2 pr-9 rounded-xl border border-gov-border hover:border-slate-400 dark:hover:border-slate-500 focus:outline-none focus:border-orange-500 transition cursor-pointer shadow-xs"
           >
             {FY_OPTIONS.map((fy) => (
               <option key={fy} value={fy} className="bg-gov-card text-gov-primary">
@@ -69,7 +69,7 @@ export const HeaderFilterBar: React.FC = () => {
           <select
             value={selectedState}
             onChange={(e) => setSelectedState(e.target.value)}
-            className="appearance-none bg-gov-card text-gov-primary text-xs font-semibold px-4 py-2 pr-9 rounded-lg border border-gov-border hover:border-slate-400 dark:hover:border-slate-500 focus:outline-none focus:border-orange-500 transition cursor-pointer shadow-sm"
+            className="appearance-none bg-gov-card text-gov-primary text-xs font-semibold px-4 py-2 pr-9 rounded-xl border border-gov-border hover:border-slate-400 dark:hover:border-slate-500 focus:outline-none focus:border-orange-500 transition cursor-pointer shadow-xs"
           >
             {STATE_OPTIONS.map((st) => (
               <option key={st} value={st} className="bg-gov-card text-gov-primary">
@@ -85,7 +85,7 @@ export const HeaderFilterBar: React.FC = () => {
           <select
             value={selectedSeverity}
             onChange={(e) => setSelectedSeverity(e.target.value)}
-            className="appearance-none bg-gov-card text-gov-primary text-xs font-semibold px-4 py-2 pr-9 rounded-lg border border-gov-border hover:border-slate-400 dark:hover:border-slate-500 focus:outline-none focus:border-orange-500 transition cursor-pointer shadow-sm"
+            className="appearance-none bg-gov-card text-gov-primary text-xs font-semibold px-4 py-2 pr-9 rounded-xl border border-gov-border hover:border-slate-400 dark:hover:border-slate-500 focus:outline-none focus:border-orange-500 transition cursor-pointer shadow-xs"
           >
             {SEVERITY_OPTIONS.map((sev) => (
               <option key={sev} value={sev} className="bg-gov-card text-gov-primary">
@@ -99,17 +99,21 @@ export const HeaderFilterBar: React.FC = () => {
 
       {/* Sync Status & Run Analysis Action */}
       <div className="flex items-center space-x-3">
-        <span className="text-xs text-gov-muted font-medium flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+        <span className="text-xs text-gov-muted font-medium flex items-center gap-1.5 bg-gov-card px-3 py-1.5 rounded-full border border-gov-border shadow-xs">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
           {lastSynced}
         </span>
 
         <button
           onClick={runAnalysis}
           disabled={isAnalyzing}
-          className="flex items-center space-x-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold px-4 py-2 rounded-lg shadow-sm hover:shadow active:scale-98 transition disabled:opacity-50 cursor-pointer"
+          className="flex items-center space-x-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-xs hover:shadow transition disabled:opacity-50 cursor-pointer active:scale-98"
         >
-          <RotateCw className={`w-3.5 h-3.5 text-white ${isAnalyzing ? 'animate-spin' : ''}`} />
+          {isAnalyzing ? (
+            <RotateCw className="w-3.5 h-3.5 text-white animate-spin" />
+          ) : (
+            <Sparkles className="w-3.5 h-3.5 text-amber-200" />
+          )}
           <span>{isAnalyzing ? 'Executing AI Anomaly Models...' : t('run_analysis')}</span>
         </button>
       </div>

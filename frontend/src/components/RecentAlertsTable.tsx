@@ -14,11 +14,17 @@ export const RecentAlertsTable: React.FC = () => {
   const { selectedState, selectedSeverity, setSelectedWorkId, setOpenTriageAlertId, t } = useApp();
   const [alerts, setAlerts] = useState<AnomalyAlert[]>([]);
   const [selectedAlertIds, setSelectedAlertIds] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
+    setLoading(true);
     api.getAlerts(selectedSeverity, 'All', selectedState).then((data) => {
-      setAlerts(data);
-    }).catch(console.error);
+      setAlerts(data || []);
+      setLoading(false);
+    }).catch(err => {
+      console.error(err);
+      setLoading(false);
+    });
   }, [selectedState, selectedSeverity]);
 
   const toggleSelectAll = () => {
@@ -91,7 +97,7 @@ export const RecentAlertsTable: React.FC = () => {
   const displayedAlerts = alerts.slice(0, 10);
 
   return (
-    <div className="bg-gov-card border border-gov-border rounded-xl p-4 shadow-gov">
+    <div className="bg-gov-card border border-gov-border rounded-2xl p-4 shadow-gov animate-fade-in">
       {/* Table Header Controls */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div className="flex items-center space-x-3">
@@ -105,10 +111,9 @@ export const RecentAlertsTable: React.FC = () => {
         </div>
 
         <div className="flex items-center space-x-2">
-          {/* Export to CSV */}
           <button
             onClick={exportCSV}
-            className="flex items-center space-x-1.5 bg-gov-card hover:bg-gov-card-muted text-gov-primary text-xs font-semibold px-3.5 py-1.5 rounded-lg border border-gov-border hover:border-slate-400 dark:hover:border-slate-500 transition shadow-sm cursor-pointer"
+            className="flex items-center space-x-1.5 bg-gov-card hover:bg-gov-card-muted text-gov-primary text-xs font-semibold px-3.5 py-1.5 rounded-xl border border-gov-border hover:border-slate-400 dark:hover:border-slate-500 transition shadow-xs cursor-pointer"
             title="Export full alerts log to CSV for audit"
           >
             <Download className="w-3.5 h-3.5 text-gov-muted" />
@@ -118,7 +123,7 @@ export const RecentAlertsTable: React.FC = () => {
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-lg border border-gov-border">
+      <div className="overflow-x-auto rounded-xl border border-gov-border">
         <table className="w-full text-left text-xs text-gov-secondary">
           <thead className="bg-slate-100 dark:bg-slate-900/90 text-gov-primary uppercase tracking-wider font-bold border-b border-gov-border">
             <tr>
@@ -141,7 +146,15 @@ export const RecentAlertsTable: React.FC = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gov-border">
-            {displayedAlerts.map((a) => {
+            {loading ? (
+              [1, 2, 3, 4, 5].map((i) => (
+                <tr key={i}>
+                  <td colSpan={8} className="p-3">
+                    <div className="h-6 skeleton-shimmer w-full"></div>
+                  </td>
+                </tr>
+              ))
+            ) : displayedAlerts.map((a) => {
               const isSelected = selectedAlertIds.has(a.alert_id);
               return (
                 <tr
@@ -206,10 +219,10 @@ export const RecentAlertsTable: React.FC = () => {
       <div className="flex items-center justify-between pt-3 mt-2 border-t border-gov-border text-xs text-gov-muted font-medium">
         <span>Showing 1–{displayedAlerts.length} of {alerts.length}</span>
         <div className="flex items-center space-x-2">
-          <button className="px-3 py-1 rounded-lg bg-gov-card border border-gov-border hover:bg-gov-card-muted transition disabled:opacity-40 cursor-pointer" disabled>
+          <button className="px-3 py-1 rounded-xl bg-gov-card border border-gov-border hover:bg-gov-card-muted transition disabled:opacity-40 cursor-pointer" disabled>
             &lt;
           </button>
-          <button className="px-3 py-1 rounded-lg bg-gov-card border border-gov-border hover:bg-gov-card-muted transition cursor-pointer">
+          <button className="px-3 py-1 rounded-xl bg-gov-card border border-gov-border hover:bg-gov-card-muted transition cursor-pointer">
             &gt;
           </button>
         </div>
